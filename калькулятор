@@ -1,0 +1,91 @@
+package main
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+func calculate(expression string) (float64, error) {
+	expression = strings.ReplaceAll(expression, " ", "")
+
+	if expression[0] == '-' {
+		expression = "0" + expression
+	}
+
+	calculateMD := func(nums []float64, ops []string) []float64 {
+		for i := 1; i < len(nums); {
+			switch ops[i-1] {
+			case "*":
+				nums[i-1] = nums[i-1] * nums[i]
+				nums = append(nums[:i], nums[i+1:]...)
+				ops = append(ops[:i-1], ops[i:]...)
+			case "/":
+				nums[i-1] = nums[i-1] / nums[i]
+				nums = append(nums[:i], nums[i+1:]...)
+				ops = append(ops[:i-1], ops[i:]...)
+			default:
+				i++
+			}
+		}
+		return nums
+	}
+
+	calculateAS := func(nums []float64, ops []string) float64 {
+		result := nums[0]
+		for i, op := range ops {
+			switch op {
+			case "+":
+				result += nums[i+1]
+			case "-":
+				result -= nums[i+1]
+			}
+		}
+		return result
+	}
+
+	numStack := make([]float64, 0)
+	opStack := make([]string, 0)
+	components := strings.Split(expression, "")
+	currentNum := ""
+	for _, component := range components {
+		if _, err := strconv.ParseFloat(component, 64); err == nil || (component == "-" && currentNum == "") || component == "." {
+			currentNum += component
+		} else {
+			if currentNum != "" {
+				num, _ := strconv.ParseFloat(currentNum, 64)
+				numStack = append(numStack, num)
+				currentNum = ""
+			}
+			opStack = append(opStack, component)
+		}
+	}
+	if currentNum != "" {
+		num, _ := strconv.ParseFloat(currentNum, 64)
+		numStack = append(numStack, num)
+	}
+
+	numStack = calculateMD(numStack, opStack)
+	result := calculateAS(numStack, opStack)
+	return result, nil
+}
+
+func formatResult(formatted string) string {
+	if strings.Contains(formatted, ".") {
+		formatted = strings.TrimRight(formatted, "0")
+		formatted = strings.TrimRight(formatted, ".")
+	}
+	return formatted
+}
+
+func main() {
+	expression := "4-1.5+1.2*-6.0+3.2/1.3" //+0.2
+	result, err := calculate(expression)
+	shortResult := fmt.Sprintf("%.4f", result)
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+	} else {
+		formattedResult := formatResult(shortResult)
+		fmt.Printf("Результат выражения %s: %s\n", expression, formattedResult)
+	}
+}
